@@ -1,0 +1,65 @@
+import type { Cotacao } from "./parseRelatorio";
+
+export const mockCotacoes: Cotacao[] = [
+  {
+    numero: 2694,
+    comprador: "SILVA MATOS",
+    obra: "00162 - SAA - ITAQUARA BENEVIDES",
+    fornecedores: [{ nome: "FORN. ALPHA", total: 120 }],
+    qtdFornecedores: 1,
+    tem3MaisFornecedores: false,
+    valorTotal: 120,
+    status: "Pendente",
+  },
+  {
+    numero: 2695,
+    comprador: "LUCIANA PANTOJA",
+    obra: "00002 - SEDE - CNP",
+    fornecedores: [{ nome: "DISTRIBUIDORA BETA", total: 880 }],
+    qtdFornecedores: 1,
+    tem3MaisFornecedores: false,
+    valorTotal: 880,
+    status: "Pendente",
+  },
+  {
+    numero: 2697,
+    comprador: "LUCIANA PANTOJA",
+    obra: "00073 - REFORMA E AMPLIAÇÃO DA PREFEITURA DE BARCARENA",
+    fornecedores: [
+      { nome: "CONSTRUTORA GAMA", total: 6000 },
+      { nome: "MATERIAIS DELTA", total: 6317.74 },
+    ],
+    qtdFornecedores: 2,
+    tem3MaisFornecedores: false,
+    valorTotal: 12317.74,
+    status: "Pendente",
+  },
+  {
+    numero: 2702,
+    comprador: "SILVA MATOS",
+    obra: "00153 - CONSTRUÇÃO DO PARQUE NATURAL MUNICIPAL MARIA BONITA",
+    fornecedores: [
+      { nome: "FORN. ALPHA", total: 13000 },
+      { nome: "DISTRIBUIDORA BETA", total: 13065 },
+      { nome: "MATERIAIS DELTA", total: 13000 },
+    ],
+    qtdFornecedores: 3,
+    tem3MaisFornecedores: true,
+    valorTotal: 39065,
+    status: "Conforme",
+  },
+  {
+    numero: 2724,
+    comprador: "SILVA MATOS",
+    obra: "00153 - CONSTRUÇÃO DO PARQUE NATURAL MUNICIPAL MARIA BONITA",
+    fornecedores: [
+      { nome: "CONSTRUTORA GAMA", total: 7100 },
+      { nome: "MATERIAIS DELTA", total: 7150.91 },
+      { nome: "FORN. ALPHA", total: 7151 },
+    ],
+    qtdFornecedores: 3,
+    tem3MaisFornecedores: true,
+    valorTotal: 21401.91,
+    status: "Conforme",
+  },
+];
