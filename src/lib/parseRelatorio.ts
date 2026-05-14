@@ -1,5 +1,3 @@
-import * as XLSX from "xlsx";
-
 export interface FornecedorCotacao {
   nome: string;
   total: number;
@@ -87,15 +85,18 @@ export function parseRelatorio(rows: Row[]): Cotacao[] {
 }
 
 export async function parseXlsxFile(file: File): Promise<Cotacao[]> {
+  const XLSX = await import("xlsx");
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
-  const sheetName = wb.SheetNames.find((n) => n.toLowerCase().includes("relat")) ?? wb.SheetNames[0];
+  const sheetName =
+    wb.SheetNames.find((n) => n.toLowerCase().includes("relat")) ?? wb.SheetNames[0];
   const sheet = wb.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: true });
   return parseRelatorio(rows);
 }
 
-export function exportToXlsx(cotacoes: Cotacao[]): void {
+export async function exportToXlsx(cotacoes: Cotacao[]): Promise<void> {
+  const XLSX = await import("xlsx");
   const data = cotacoes.map((c) => ({
     Cotação: c.numero,
     Comprador: c.comprador,
