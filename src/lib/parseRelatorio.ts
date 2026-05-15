@@ -64,12 +64,13 @@ export function parseRelatorio(rows: Row[]): Cotacao[] {
     }
     if (totalCotacaoRow === null) return null;
 
+    // Source of truth for supplier existence: numeric value > 0 in "Total da cotação"
     const totais = fornecedoresCols.map((c) =>
       asNumber(getCell(rows[totalCotacaoRow!], c)),
     );
-    const fornecedores: FornecedorCotacao[] = nomesFantasia
-      .map((nome, idx) => ({ nome, total: totais[idx] }))
-      .filter((f) => f.total !== null && f.nome)
+    const fornecedores: FornecedorCotacao[] = totais
+      .map((total, idx) => ({ nome: nomesFantasia[idx], total }))
+      .filter((f) => f.total !== null)
       .map((f) => ({ nome: f.nome, total: f.total as number }));
 
     const qtd = fornecedores.length;
