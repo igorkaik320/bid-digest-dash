@@ -38,29 +38,33 @@ export function parseRelatorio(rows: Row[]): Cotacao[] {
   const cotacoes: Cotacao[] = [];
   const fornecedoresCols = [8, 10, 12, 14];
 
-  for (let i = 0; i < rows.length; i++) {
-    if (asString(getCell(rows[i], 0)) !== "Cotação") continue;
-    const anchor = i;
-
-    const numero = asString(getCell(rows[anchor], 3)) || asString(getCell(rows[anchor], 4));
-    const comprador = asString(getCell(rows[anchor], 6)) || asString(getCell(rows[anchor], 7));
-    const obra = asString(getCell(rows[anchor + 2], 3)) || asString(getCell(rows[anchor + 2], 4));
-
-    const nomesFantasia = fornecedoresCols.map((c) => asString(getCell(rows[anchor + 3], c)));
+  function buildBlock(
+    obraRow: number,
+    fornecedoresRow: number,
+    numero: string,
+    comprador: string,
+  ): { cotacao: Cotacao; totalRow: number } | null {
+    const obra =
+      asString(getCell(rows[obraRow], 3)) || asString(getCell(rows[obraRow], 4));
+    const nomesFantasia = fornecedoresCols.map((c) =>
+      asString(getCell(rows[fornecedoresRow], c)),
+    );
 
     let totalCotacaoRow: number | null = null;
-    const limit = Math.min(rows.length, anchor + 200);
-    for (let j = anchor + 7; j < limit; j++) {
-      if (asString(getCell(rows[j], 0)) === "Total da cotação") {
+    const limit = Math.min(rows.length, fornecedoresRow + 200);
+    for (let j = fornecedoresRow + 1; j < limit; j++) {
+      const c0 = asString(getCell(rows[j], 0));
+      if (c0 === "Total da cotação") {
         totalCotacaoRow = j;
         break;
       }
-      if (j > anchor + 7 && asString(getCell(rows[j], 0)) === "Cotação") break;
+      if (c0 === "Cotação" || c0 === "Obra") break;
     }
+    if (totalCotacaoRow === null) return null;
 
-    if (totalCotacaoRow === null) continue;
-
-    const totais = fornecedoresCols.map((c) => asNumber(getCell(rows[totalCotacaoRow!], c)));
+    const totais = fornecedoresCols.map((c) =>
+      asNumber(getCell(rows[totalCotacaoRow!], c)),
+    );
     const fornecedores: FornecedorCotacao[] = nomesFantasia
       .map((nome, idx) => ({ nome, total: totais[idx] }))
       .filter((f) => f.total !== null && f.nome)
@@ -69,16 +73,50 @@ export function parseRelatorio(rows: Row[]): Cotacao[] {
     const qtd = fornecedores.length;
     const valorTotal = fornecedores.reduce((s, f) => s + f.total, 0);
 
-    cotacoes.push({
-      numero: numero || `#${anchor}`,
-      comprador: comprador || "—",
-      obra: obra || "—",
-      fornecedores,
-      qtdFornecedores: qtd,
-      tem3MaisFornecedores: qtd >= 3,
-      valorTotal,
-      status: qtd >= 3 ? "Conforme" : "Pendente",
-    });
+    return {
+      totalRow: totalCotacaoRow,
+      cotacao: {
+        numero: numero || `#${obraRow}`,
+        comprador: comprador || "—",
+        obra: obra || "—",
+        fornecedores,
+        qtdFornecedores: qtd,
+        tem3MaisFornecedores: qtd >= 3,
+        valorTotal,
+        status: qtd >= 3 ? "Conforme" : "Pendente",
+      },
+    };
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    if (asString(getCell(rows[i], 0)) !== "Cotação") continue;
+    const anchor = i;
+
+    const numero =
+      asString(getCell(rows[anchor], 3)) || asString(getCell(rows[anchor], 4));
+    const comprador =
+      asString(getCell(rows[anchor], 6)) || asString(getCell(rows[anchor], 7));
+
+    // First block: Cotação row -> Obra at +2 -> fornecedores at +3
+    const first = buildBlock(anchor + 2, anchor + 3, numero, comprador);
+    if (!first) continue;
+    cotacoes.push(first.cotacao);
+
+    // Look for continuation blocks: 'Obra' rows after the total but before next 'Cotação'
+    let cursor = first.totalRow + 1;
+    while (cursor < rows.length) {
+      const c0 = asString(getCell(rows[cursor], 0));
+      if (c0 === "Cotação") break;
+      if (c0 === "Obra") {
+        const cont = buildBlock(cursor, cursor + 1, numero, comprador);
+        if (!cont) break;
+        cotacoes.push(cont.cotacao);
+        cursor = cont.totalRow + 1;
+        continue;
+      }
+      cursor++;
+    }
+    i = cursor - 1;
   }
 
   return cotacoes;
