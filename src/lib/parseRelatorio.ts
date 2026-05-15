@@ -46,9 +46,11 @@ export function parseRelatorio(rows: Row[]): Cotacao[] {
   ): { cotacao: Cotacao; totalRow: number } | null {
     const obra =
       asString(getCell(rows[obraRow], 3)) || asString(getCell(rows[obraRow], 4));
-    const nomesFantasia = fornecedoresCols.map((c) =>
-      asString(getCell(rows[fornecedoresRow], c)),
-    );
+    const nomesFantasia = fornecedoresCols.map((c, idx) => {
+      const nomeFantasia = asString(getCell(rows[fornecedoresRow], c));
+      const razaoSocial = asString(getCell(rows[fornecedoresRow + 1], c));
+      return nomeFantasia || razaoSocial || `Fornecedor ${idx + 1}`;
+    });
 
     let totalCotacaoRow: number | null = null;
     const limit = Math.min(rows.length, fornecedoresRow + 200);
