@@ -152,3 +152,54 @@ export async function exportToXlsx(cotacoes: Cotacao[]): Promise<void> {
   XLSX.utils.book_append_sheet(wb, ws, "Análise");
   XLSX.writeFile(wb, "analise-cotacoes.xlsx");
 }
+
+export async function exportToPdf(cotacoes: Cotacao[]): Promise<void> {
+  const { jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
+
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const fmt = (n: number) =>
+    n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const total = cotacoes.length;
+  const conformes = cotacoes.filter((c) => c.status === "Conforme").length;
+  const pendentes = total - conformes;
+  const valor = cotacoes.reduce((s, c) => s + c.valorTotal, 0);
+
+  doc.setFontSize(16);
+  doc.text("Análise de Cotações", 14, 15);
+  doc.setFontSize(10);
+  doc.text(
+    `Total: ${total}  |  Conformes: ${conformes}  |  Pendentes: ${pendentes}  |  Valor: ${fmt(valor)}`,
+    14,
+    22,
+  );
+
+  autoTable(doc, {
+    startY: 28,
+    head: [["Cotação", "Comprador", "Obra", "Fornec.", "Status", "Valor Total"]],
+    body: cotacoes.map((c) => [
+      String(c.numero),
+      c.comprador,
+      c.obra,
+      String(c.qtdFornecedores),
+      c.status,
+      fmt(c.valorTotal),
+    ]),
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { fillColor: [30, 30, 30] },
+    columnStyles: {
+      3: { halign: "center" },
+      5: { halign: "right" },
+    },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.column.index === 4) {
+        const v = data.cell.raw;
+        if (v === "Conforme") data.cell.styles.textColor = [22, 130, 70];
+        else if (v === "Pendente") data.cell.styles.textColor = [180, 90, 10];
+      }
+    },
+  });
+
+  doc.save("analise-cotacoes.pdf");
+}
