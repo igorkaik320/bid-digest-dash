@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Cotacao } from "@/lib/parseRelatorio";
-import { exportToXlsx } from "@/lib/parseRelatorio";
+import { exportToXlsx, exportToPdf } from "@/lib/parseRelatorio";
 import { CotacaoDetailDialog } from "./CotacaoDetailDialog";
 
 interface Props {
@@ -133,7 +133,7 @@ export function Dashboard({ cotacoes, onReset }: Props) {
           <Button variant="outline" onClick={() => exportToXlsx(cotacoes)}>
             <Download className="mr-2 h-4 w-4" /> Exportar Excel
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={() => exportToPdf(filtered)}>
             <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar PDF
           </Button>
           <Button variant="ghost" onClick={onReset}>
