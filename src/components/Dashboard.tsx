@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Cotacao } from "@/lib/parseRelatorio";
-import { exportToXlsx } from "@/lib/parseRelatorio";
+import { exportToXlsx, exportToPdf } from "@/lib/parseRelatorio";
 import { CotacaoDetailDialog } from "./CotacaoDetailDialog";
 
 interface Props {
