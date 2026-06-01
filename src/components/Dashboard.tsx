@@ -133,7 +133,7 @@ export function Dashboard({ cotacoes, onReset }: Props) {
           <Button variant="outline" onClick={() => exportToXlsx(cotacoes)}>
             <Download className="mr-2 h-4 w-4" /> Exportar Excel
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={() => exportToPdf(filtered)}>
             <FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar PDF
           </Button>
           <Button variant="ghost" onClick={onReset}>
