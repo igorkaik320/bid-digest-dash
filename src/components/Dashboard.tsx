@@ -24,6 +24,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown, Building2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -52,15 +59,30 @@ export function Dashboard({ cotacoes, onReset }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("numero");
   const [sortAsc, setSortAsc] = useState(false);
   const [selected, setSelected] = useState<Cotacao | null>(null);
+  const [excludedObras, setExcludedObras] = useState<Set<string>>(new Set());
+  const [obrasOpen, setObrasOpen] = useState(false);
+
+  const obrasList = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of cotacoes) map.set(c.obra, (map.get(c.obra) ?? 0) + 1);
+    return Array.from(map.entries())
+      .map(([obra, count]) => ({ obra, count }))
+      .sort((a, b) => a.obra.localeCompare(b.obra, "pt-BR"));
+  }, [cotacoes]);
+
+  const consideradas = useMemo(
+    () => cotacoes.filter((c) => !excludedObras.has(c.obra)),
+    [cotacoes, excludedObras],
+  );
 
   const compradores = useMemo(
-    () => Array.from(new Set(cotacoes.map((c) => c.comprador))).sort(),
-    [cotacoes],
+    () => Array.from(new Set(consideradas.map((c) => c.comprador))).sort(),
+    [consideradas],
   );
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return cotacoes
+    return consideradas
       .filter((c) => {
         if (compradorFilter !== "__all__" && c.comprador !== compradorFilter) return false;
         if (statusFilter !== "all" && c.status !== statusFilter) return false;
@@ -76,19 +98,19 @@ export function Dashboard({ cotacoes, onReset }: Props) {
         else cmp = String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
         return sortAsc ? cmp : -cmp;
       });
-  }, [cotacoes, search, compradorFilter, statusFilter, sortKey, sortAsc]);
+  }, [consideradas, search, compradorFilter, statusFilter, sortKey, sortAsc]);
 
   const stats = useMemo(() => {
-    const total = cotacoes.length;
-    const conformes = cotacoes.filter((c) => c.status === "Conforme").length;
+    const total = consideradas.length;
+    const conformes = consideradas.filter((c) => c.status === "Conforme").length;
     const pendentes = total - conformes;
-    const valor = cotacoes.reduce((s, c) => s + c.valorTotal, 0);
+    const valor = consideradas.reduce((s, c) => s + c.valorTotal, 0);
     return { total, conformes, pendentes, valor };
-  }, [cotacoes]);
+  }, [consideradas]);
 
   const chartData = useMemo(() => {
     const map = new Map<string, { comprador: string; Conforme: number; Pendente: number }>();
-    for (const c of cotacoes) {
+    for (const c of consideradas) {
       const e = map.get(c.comprador) ?? { comprador: c.comprador, Conforme: 0, Pendente: 0 };
       e[c.status]++;
       map.set(c.comprador, e);
@@ -96,7 +118,16 @@ export function Dashboard({ cotacoes, onReset }: Props) {
     return Array.from(map.values()).sort((a, b) =>
       b.Conforme + b.Pendente - (a.Conforme + a.Pendente),
     );
-  }, [cotacoes]);
+  }, [consideradas]);
+
+  const toggleObra = (obra: string) => {
+    setExcludedObras((prev) => {
+      const next = new Set(prev);
+      if (next.has(obra)) next.delete(obra);
+      else next.add(obra);
+      return next;
+    });
+  };
 
   const toggleSort = (k: SortKey) => {
     if (k === sortKey) setSortAsc(!sortAsc);
@@ -126,11 +157,12 @@ export function Dashboard({ cotacoes, onReset }: Props) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Análise de Cotações</h1>
           <p className="text-sm text-muted-foreground">
-            {stats.total} cotações importadas do relatório
+            {stats.total} cotações consideradas
+            {excludedObras.size > 0 && ` · ${excludedObras.size} obra(s) excluída(s)`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => exportToXlsx(cotacoes)}>
+          <Button variant="outline" onClick={() => exportToXlsx(consideradas)}>
             <Download className="mr-2 h-4 w-4" /> Exportar Excel
           </Button>
           <Button variant="outline" onClick={() => exportToPdf(filtered)}>
@@ -141,6 +173,75 @@ export function Dashboard({ cotacoes, onReset }: Props) {
           </Button>
         </div>
       </div>
+
+      <Card>
+        <Collapsible open={obrasOpen} onOpenChange={setObrasOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-accent/40"
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span className="text-base font-semibold">Obras consideradas</span>
+                <Badge variant="secondary">
+                  {obrasList.length - excludedObras.size} de {obrasList.length}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                {excludedObras.size > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExcludedObras(new Set());
+                    }}
+                  >
+                    Incluir todas
+                  </Button>
+                )}
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${obrasOpen ? "rotate-180" : ""}`}
+                />
+              </div>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-t px-6 py-4">
+              <p className="mb-3 text-xs text-muted-foreground">
+                Desmarque obras que não devem entrar nos cálculos e no gráfico.
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {obrasList.map(({ obra, count }) => {
+                  const included = !excludedObras.has(obra);
+                  return (
+                    <label
+                      key={obra}
+                      className="flex cursor-pointer items-start gap-2 rounded-md border p-2 hover:bg-accent/40"
+                    >
+                      <Checkbox
+                        checked={included}
+                        onCheckedChange={() => toggleObra(obra)}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm" title={obra}>
+                          {obra || "(sem obra)"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {count} cotação{count > 1 ? "ões" : ""}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
