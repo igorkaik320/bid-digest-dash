@@ -59,15 +59,30 @@ export function Dashboard({ cotacoes, onReset }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("numero");
   const [sortAsc, setSortAsc] = useState(false);
   const [selected, setSelected] = useState<Cotacao | null>(null);
+  const [excludedObras, setExcludedObras] = useState<Set<string>>(new Set());
+  const [obrasOpen, setObrasOpen] = useState(false);
+
+  const obrasList = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of cotacoes) map.set(c.obra, (map.get(c.obra) ?? 0) + 1);
+    return Array.from(map.entries())
+      .map(([obra, count]) => ({ obra, count }))
+      .sort((a, b) => a.obra.localeCompare(b.obra, "pt-BR"));
+  }, [cotacoes]);
+
+  const consideradas = useMemo(
+    () => cotacoes.filter((c) => !excludedObras.has(c.obra)),
+    [cotacoes, excludedObras],
+  );
 
   const compradores = useMemo(
-    () => Array.from(new Set(cotacoes.map((c) => c.comprador))).sort(),
-    [cotacoes],
+    () => Array.from(new Set(consideradas.map((c) => c.comprador))).sort(),
+    [consideradas],
   );
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return cotacoes
+    return consideradas
       .filter((c) => {
         if (compradorFilter !== "__all__" && c.comprador !== compradorFilter) return false;
         if (statusFilter !== "all" && c.status !== statusFilter) return false;
@@ -83,19 +98,19 @@ export function Dashboard({ cotacoes, onReset }: Props) {
         else cmp = String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
         return sortAsc ? cmp : -cmp;
       });
-  }, [cotacoes, search, compradorFilter, statusFilter, sortKey, sortAsc]);
+  }, [consideradas, search, compradorFilter, statusFilter, sortKey, sortAsc]);
 
   const stats = useMemo(() => {
-    const total = cotacoes.length;
-    const conformes = cotacoes.filter((c) => c.status === "Conforme").length;
+    const total = consideradas.length;
+    const conformes = consideradas.filter((c) => c.status === "Conforme").length;
     const pendentes = total - conformes;
-    const valor = cotacoes.reduce((s, c) => s + c.valorTotal, 0);
+    const valor = consideradas.reduce((s, c) => s + c.valorTotal, 0);
     return { total, conformes, pendentes, valor };
-  }, [cotacoes]);
+  }, [consideradas]);
 
   const chartData = useMemo(() => {
     const map = new Map<string, { comprador: string; Conforme: number; Pendente: number }>();
-    for (const c of cotacoes) {
+    for (const c of consideradas) {
       const e = map.get(c.comprador) ?? { comprador: c.comprador, Conforme: 0, Pendente: 0 };
       e[c.status]++;
       map.set(c.comprador, e);
@@ -103,7 +118,16 @@ export function Dashboard({ cotacoes, onReset }: Props) {
     return Array.from(map.values()).sort((a, b) =>
       b.Conforme + b.Pendente - (a.Conforme + a.Pendente),
     );
-  }, [cotacoes]);
+  }, [consideradas]);
+
+  const toggleObra = (obra: string) => {
+    setExcludedObras((prev) => {
+      const next = new Set(prev);
+      if (next.has(obra)) next.delete(obra);
+      else next.add(obra);
+      return next;
+    });
+  };
 
   const toggleSort = (k: SortKey) => {
     if (k === sortKey) setSortAsc(!sortAsc);
