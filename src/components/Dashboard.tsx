@@ -157,11 +157,12 @@ export function Dashboard({ cotacoes, onReset }: Props) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Análise de Cotações</h1>
           <p className="text-sm text-muted-foreground">
-            {stats.total} cotações importadas do relatório
+            {stats.total} cotações consideradas
+            {excludedObras.size > 0 && ` · ${excludedObras.size} obra(s) excluída(s)`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => exportToXlsx(cotacoes)}>
+          <Button variant="outline" onClick={() => exportToXlsx(consideradas)}>
             <Download className="mr-2 h-4 w-4" /> Exportar Excel
           </Button>
           <Button variant="outline" onClick={() => exportToPdf(filtered)}>
@@ -172,6 +173,75 @@ export function Dashboard({ cotacoes, onReset }: Props) {
           </Button>
         </div>
       </div>
+
+      <Card>
+        <Collapsible open={obrasOpen} onOpenChange={setObrasOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-accent/40"
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span className="text-base font-semibold">Obras consideradas</span>
+                <Badge variant="secondary">
+                  {obrasList.length - excludedObras.size} de {obrasList.length}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                {excludedObras.size > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExcludedObras(new Set());
+                    }}
+                  >
+                    Incluir todas
+                  </Button>
+                )}
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${obrasOpen ? "rotate-180" : ""}`}
+                />
+              </div>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-t px-6 py-4">
+              <p className="mb-3 text-xs text-muted-foreground">
+                Desmarque obras que não devem entrar nos cálculos e no gráfico.
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {obrasList.map(({ obra, count }) => {
+                  const included = !excludedObras.has(obra);
+                  return (
+                    <label
+                      key={obra}
+                      className="flex cursor-pointer items-start gap-2 rounded-md border p-2 hover:bg-accent/40"
+                    >
+                      <Checkbox
+                        checked={included}
+                        onCheckedChange={() => toggleObra(obra)}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm" title={obra}>
+                          {obra || "(sem obra)"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {count} cotação{count > 1 ? "ões" : ""}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
